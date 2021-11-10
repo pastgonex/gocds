@@ -13,7 +13,7 @@ export PATH=`pwd`:$PATH
 ### Example
 ```sh
 cds dirtree [Path] # Path to the directory file
-cds db [user]:[passwd]@tcp(url:port)/[databaseName]" [package name]  # [Package name] is the directory where the generated go files will be placed
+cds db "[user]:[passwd]@tcp(url:port)/[databaseName] [package name]\  # [Package name] is the directory where the generated go files will be placed
 cds s2r [Path] # Path to swagger file 
 ```
 
