@@ -1,4 +1,4 @@
-package cds
+package main
 
 func main() {
 
