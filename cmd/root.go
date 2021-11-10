@@ -6,8 +6,12 @@ var RootCmd = &(cobra.Command{
 	Use: "cds",
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
-			cmd.Help()
+			err := cmd.Help()
+			if err != nil {
+				return
+			}
 			return
 		}
 	},
+	Example: "cds",
 })

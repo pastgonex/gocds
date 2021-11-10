@@ -23,7 +23,6 @@ func Exists(path string) bool {
 	return true
 }
 
-//实现linux tree命令
 //deepth:目录的深度，如果包含一级子目录，则深度为2，依此类推。
 func tree(dirPath string, deepth int) (err error) {
 	dir, err := ioutil.ReadDir(dirPath)
@@ -31,7 +30,7 @@ func tree(dirPath string, deepth int) (err error) {
 		return err
 	}
 
-	//打印最上层目录的特殊前缀
+	// Print the special prefix for the topmost directory
 	if deepth == 1 {
 		fmt.Printf("!---%s\n", filepath.Base(dirPath))
 	}
@@ -40,18 +39,22 @@ func tree(dirPath string, deepth int) (err error) {
 	pathSep := string(os.PathSeparator)
 
 	for _, file := range dir {
-		//如果是子目录，则递归调用tree命令，且deepth+1
+		// if subDir, recursive.
 		if file.IsDir() {
 			fmt.Printf("|")
-			//根据深度打印制表符间隔
+			// Print tab spacing based on depth
 			for i := 0; i < deepth; i++ {
 				fmt.Printf("    |")
 			}
 			fmt.Printf("---%s\n", file.Name())
-			tree(dirPath+pathSep+file.Name(), deepth+1)
+			err := tree(dirPath+pathSep+file.Name(), deepth+1)
+			if err != nil {
+				return err
+			}
 			continue
 		}
 
+		// if regular file , print it
 		fmt.Printf("|")
 		for i := 0; i < deepth; i++ {
 			fmt.Printf("    |")
@@ -78,10 +81,14 @@ var dirtreeCmd = &(cobra.Command{
 			os.Exit(1)
 		}
 		if Exists(dirPath) {
-			tree(dirPath, 1)
+			err := tree(dirPath, 1)
+			if err != nil {
+				return
+			}
 		} else {
 			fmt.Println("The path does not exist.")
 			os.Exit(1)
 		}
 	},
+	Example: "cds dirtree ./cmd",
 })
