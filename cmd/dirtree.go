@@ -23,7 +23,6 @@ func Exists(path string) bool {
 	return true
 }
 
-//deepth:目录的深度，如果包含一级子目录，则深度为2，依此类推。
 func tree(dirPath string, deepth int) (err error) {
 	dir, err := ioutil.ReadDir(dirPath)
 	if err != nil {

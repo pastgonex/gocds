@@ -14,23 +14,6 @@ func init() {
 	RootCmd.AddCommand(dbCommand)
 }
 
-func getDbName(dblink string) string {
-	var dbName string // 数据库名称
-	for i := len(dblink) - 1; dblink[i] != '/'; i-- {
-		dbName += string(dblink[i])
-	}
-	dbName = reverse(dbName)
-	return dbName
-}
-
-func reverse(str string) string {
-	s := []rune(str)
-	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
-		s[i], s[j] = s[j], s[i]
-	}
-	return string(s)
-}
-
 //map for converting mysql type to golang types
 var typeForMysqlToGo = map[string]string{
 	"int":                "int64",
@@ -74,29 +57,29 @@ func deal(dblink string, modelName string) (err error) {
 	//fmt.Println(dblink)
 	dbName := getDbName(dblink)
 	//fmt.Println(dbName)
-	DB, e := sql.Open("mysql", dblink)
-	if e != nil {
-		return e
+
+	// Init DB
+	DB, err := initDb(dblink)
+	if err != nil {
+		return err
 	}
 
 	defer func(DB *sql.DB) {
 		err := DB.Close()
 		if err != nil {
 			fmt.Println(err)
+			os.Exit(0)
 		}
 	}(DB)
 
-	// 判断是否已经连接上数据库
-	if err := DB.Ping(); err != nil {
-		fmt.Println("open database fail...")
+	cmd := "select table_name from information_schema.tables " +
+		"where table_schema='" + dbName + "';"
+	tables, err := DB.Query(cmd)
+	if err != nil {
 		return err
 	}
 
-	cmd := "select table_name from information_schema.tables " +
-		"where table_schema='" + dbName + "';"
-	tables, e := DB.Query(cmd)
-	err = e
-
+	// 如果不存在model目录， 则创建一个
 	if Exists(modelName) == false {
 		err = os.Mkdir(modelName, os.ModePerm)
 		if err != nil {
@@ -104,6 +87,29 @@ func deal(dblink string, modelName string) (err error) {
 		}
 	}
 
+	err = dealEachTable(tables, cmd, dbName, DB, modelName)
+
+	return err
+}
+
+func getDbName(dblink string) string {
+	var dbName string // 数据库名称
+	for i := len(dblink) - 1; dblink[i] != '/'; i-- {
+		dbName += string(dblink[i])
+	}
+	dbName = reverse(dbName)
+	return dbName
+}
+
+func reverse(str string) string {
+	s := []rune(str)
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
+	}
+	return string(s)
+}
+
+func dealEachTable(tables *sql.Rows, cmd string, dbName string, DB *sql.DB, modelName string) (err error) {
 	for tables.Next() {
 		var tableName string
 		if err = tables.Scan(&tableName); err != nil {
@@ -120,35 +126,64 @@ func deal(dblink string, modelName string) (err error) {
 			return err
 		}
 
-		targetFile := "./" + modelName + "/" + tableName + ".go"
-		err = ioutil.WriteFile(targetFile, []byte("package "+modelName+"\n\n"), 0644)
-		f, _ := os.OpenFile(targetFile, os.O_APPEND|os.O_WRONLY, os.ModeAppend)
-		_, err = io.WriteString(f, "type "+tableName+" struct {\n")
+		f, err := initGoFile(modelName, tableName, err)
 		if err != nil {
 			return err
 		}
 
-		for lists.Next() {
-			var columnName, columnType string
-			if err = lists.Scan(&columnName, &columnType); err != nil {
-				fmt.Println("scan column error")
-				return err
-			}
-			//fmt.Println(columnName, columnType)
-			columnType = handlingTypeSuffix(columnType)
-
-			_, err := io.WriteString(f, "\t"+columnName+" "+typeForMysqlToGo[columnType]+"\n")
-			if err != nil {
-				return err
-			}
-		}
-		_, err = io.WriteString(f, "}\n")
-		err = f.Close()
+		err = dealEachLine(lists, f)
 		if err != nil {
 			return err
 		}
 	}
 	return err
+}
+
+func dealEachLine(lists *sql.Rows, f *os.File) (err error) {
+	for lists.Next() {
+		var columnName, columnType string
+		if err = lists.Scan(&columnName, &columnType); err != nil {
+			fmt.Println("scan column error")
+			return err
+		}
+		//fmt.Println(columnName, columnType)
+		columnType = handlingTypeSuffix(columnType)
+
+		_, err := io.WriteString(f, "\t"+columnName+" "+typeForMysqlToGo[columnType]+"\n")
+		if err != nil {
+			return err
+		}
+	}
+	_, err = io.WriteString(f, "}\n")
+	err = f.Close()
+	if err != nil {
+		return err
+	}
+	return err
+}
+
+func initGoFile(modelName string, tableName string, err error) (*os.File, error) {
+	targetFile := "./" + modelName + "/" + tableName + ".go"
+	err = ioutil.WriteFile(targetFile, []byte("package "+modelName+"\n\n"), 0644)
+	f, _ := os.OpenFile(targetFile, os.O_APPEND|os.O_WRONLY, os.ModeAppend)
+	_, err = io.WriteString(f, "type "+tableName+" struct {\n")
+	if err != nil {
+		return nil, err
+	}
+	return f, err
+}
+
+func initDb(dblink string) (*sql.DB, error) {
+	DB, e := sql.Open("mysql", dblink)
+	if e != nil {
+		return nil, e
+	}
+	// 判断是否已经连接上数据库
+	if err := DB.Ping(); err != nil {
+		fmt.Println("open database fail...")
+		return nil, e
+	}
+	return DB, e
 }
 
 func handlingTypeSuffix(columnType string) string {

@@ -36,4 +36,5 @@ var s2r = &(cobra.Command{
 			fmt.Println("too many args...")
 		}
 	},
+	Example: "cds s2r ./swaggerFiles/swagger.json",
 })
