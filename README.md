@@ -9,6 +9,17 @@ A go language implementation of a CLI, based on input directory files, using tre
 go build -o cds
 export PATH=`pwd`:$PATH
 ```
+#### MacOs/Linux
+```shell
+brew tap go-swagger/go-swagger
+brew install go-swagger 
+```
+
+#### Windows
+```shell
+go get github.com/go-swagger/go-swagger
+go install ./cmd/swagger
+```
 
 ### Example
 ```sh
