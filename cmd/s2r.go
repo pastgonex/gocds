@@ -23,6 +23,7 @@ var s2r = &(cobra.Command{
 	Use:   "s2r",
 	Short: "swagger to restful api",
 	Long:  `swagger to restful api`,
+
 	Run: func(cmd *cobra.Command, args []string) {
 		switch {
 		case len(args) == 0:
